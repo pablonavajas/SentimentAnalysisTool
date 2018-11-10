@@ -1,0 +1,86 @@
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('reuters')
+from nltk.tokenize import word_tokenize
+from string import punctuation
+from nltk.corpus import stopwords
+from nltk import word_tokenize
+from nltk.corpus import reuters
+from collections import defaultdict
+import math
+from six import string_types
+from sklearn.feature_extraction.text import TfidfVectorizer
+from tokenize import tokenize
+
+#print reuters.fileids()         # The list of file names inside the corpus
+print len(reuters.fileids())            # Number of files in the corpus = 10788
+
+# Print the categories associated with a file
+#print reuters.categories('training/999')        # [u'interest', u'money-fx']
+
+# Print the contents of the file
+print reuters.raw('test/14829')
+
+stop_words = stopwords.words('english') + list(punctuation)
+
+
+def tokenize(text):
+    words = word_tokenize(text)
+    words = [w.lower() for w in words]
+    return [w for w in words if w not in stop_words and not w.isdigit()]
+
+file = open("article1.txt","r")
+result = file.read()
+words = word_tokenize(result)
+words = tokenize(result)
+for i in words:
+       print(i)
+
+vocabulary = set()
+for file_id in reuters.fileids():
+    words = tokenize(reuters.raw(file_id))
+    vocabulary.update(words)
+
+vocabulary = list(vocabulary)
+word_index = {w: idx for idx, w in enumerate(vocabulary)}
+
+VOCABULARY_SIZE = len(vocabulary)
+DOCUMENTS_COUNT = len(reuters.fileids())
+
+print VOCABULARY_SIZE
+print DOCUMENTS_COUNT
+
+
+def word_tf(word, document):
+    isinstance(s, string_types)
+    document = tokenize(document)
+    return float(document.count(word)) / len(document)
+
+
+
+
+word_idf = defaultdict(lambda: 0)
+for file_id in reuters.fileids():
+    words = set(tokenize(reuters.raw(file_id)))
+    for word in words:
+        word_idf[word] += 1
+
+for word in vocabulary:
+    word_idf[word] = math.log(DOCUMENTS_COUNT / float(1 + word_idf[word]))
+
+print word_idf['deliberations']  # 7.49443021503
+print word_idf['committee']  # 3.61286641709
+
+tfidf = TfidfVectorizer(stop_words=stop_words, tokenizer=tokenize, vocabulary=vocabulary)
+
+# Fit the TfIdf model
+tfidf.fit(words)
+
+# Transform a document into TfIdf coordinates
+X = tfidf.transform([result])
+
+# Check out some frequencies
+print X[0, tfidf.vocabulary_['deutsche']]  # 0.0562524229373
+print X[0, tfidf.vocabulary_['china']]  # 0.057140265658
+print X[0, tfidf.vocabulary_['debt']]  # 0.0689364372666
