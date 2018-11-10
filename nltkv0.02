@@ -1,0 +1,143 @@
+import requests
+import urllib2
+from bs4 import BeautifulSoup
+import os
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('reuters')
+nltk.download('vader_lexicon')
+from nltk.tokenize import word_tokenize
+from string import punctuation
+from nltk.corpus import stopwords
+from nltk import word_tokenize
+from nltk.corpus import reuters
+from collections import defaultdict
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import sys
+reload(sys)
+#correct encoding used for the articles
+sys.setdefaultencoding('utf-8')
+
+#scrapes through the page of the bank
+URL = 'https://www.reuters.com/finance/stocks/overview/DBKGn.DE'
+page = urllib2.urlopen(URL)
+soup = BeautifulSoup(page)
+print soup.prettify()
+
+#finds the div tag 'feature', which contains all the new articles
+right_table=soup.findAll('div', attrs={"class" : 'feature'})
+for div in right_table:
+    #finds all the links of the articles and opens them
+    newURL = 'https://www.reuters.com' + div.find('a')['href']
+    newPage = urllib2.urlopen(newURL)
+    newSoup = BeautifulSoup(newPage, "lxml")
+
+    file = open("body.txt", "a")
+    file.seek(0)
+    file.write(newURL + '\n')
+    file.close
+    print newSoup.prettify()
+
+    #reads each line of the file, which is the article link
+    file = open("body.txt", "r")
+    content = file.readlines()
+    content = [x.strip() for x in content]
+    for x in content:
+        #opens each article and finds the div tag which contains the article content
+        news = urllib2.urlopen(x)
+        newsSoup = BeautifulSoup(news, "lxml")
+        articleBody = newsSoup.findAll('div', attrs={"class": 'StandardArticleBody_body'})
+
+        #for each article, only print out the text, and strip away everything else
+        for y in articleBody:
+            print y.text
+    file = open("example.txt", "a")
+    file.seek(0)
+    y=y.text.encode('utf-8')
+    articleBody = str(articleBody)
+    #write the article to the text file, which will be in one line
+    file.write(y.text + '\n')
+    file.close
+    file.close
+
+stop_words = stopwords.words('english') + list(punctuation)
+
+#nltk function to tokenize text, which analyses words individually and removes stopwords
+def tokenize(text):
+    words = word_tokenize(text)
+    words = [w.lower() for w in words]
+    return [w for w in words if w not in stop_words and not w.isdigit()]
+
+with open("example.txt") as f:
+    pos_list = []
+    neg_list = []
+    neu_list = []
+    article = f.readlines()
+    #for each article, words are tokenized and the sentiment analysis is performed using the analyzer provided
+    for x in article:
+        words = word_tokenize(x)
+        words = tokenize(x)
+        sent = 0.0
+        sid = SentimentIntensityAnalyzer()
+        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+        # print '\n-----\n'.join(tokenizer.tokenize(result))
+        ss = sid.polarity_scores('\n-----\n'.join(tokenizer.tokenize(x)))
+        sent += ss['compound']  # Tally up the overall sentiment
+        scores = dict([('pos', 0), ('neu', 0), ('neg', 0), ('compound', 0)])
+        print ss
+        for word in words:
+            #adds the words to the positive word list if over the score
+            if (sid.polarity_scores(word)['compound']) >= 0.5:
+                pos_list.append(word)
+                out = open("positive.txt", "r")
+                clean = open("positive_clean.txt", "w")
+                s = set()
+                for line in out:
+                    if line.rstrip().isalpha():
+                        if not line in s:
+                            s.add(line)
+                            clean.write(line)
+                clean.close()
+                out.close()
+
+            elif (sid.polarity_scores(word)['compound']) <= -0.5:
+                neg_list.append(word)
+                out = open("negative.txt", "r")
+                clean = open("negative_clean.txt", "w")
+                s = set()
+                for line in out:
+                    if line.rstrip().isalpha():
+                        if not line in s:
+                            s.add(line)
+                            clean.write(line)
+                clean.close()
+                out.close()
+            else:
+                neu_list.append(word)
+                out = open("neutral.txt", "r")
+                clean = open("neutral_clean.txt", "w")
+                s = set()
+                for line in out:
+                    if line.rstrip().isalpha():
+                        if not line in s:
+                            s.add(line)
+                            clean.write(line)
+                clean.close()
+                out.close()
+
+        for pos_word in pos_list:
+            file = open("positive.txt", "a")
+            file.write(pos_word + '\n')
+
+            file.close
+
+        for neg_word in neg_list:
+            file = open("negative.txt", "a")
+            file.write(neg_word + '\n')
+            file.close
+
+        for neu_word in neu_list:
+            file = open("neutral.txt", "a")
+            file.write(neu_word + '\n')
+            file.close
